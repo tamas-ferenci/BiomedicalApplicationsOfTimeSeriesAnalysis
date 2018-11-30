@@ -58,6 +58,21 @@ xyplot( spec ~ freq, data = spectrum( ptbecg, plot = FALSE, span = rep( 201, 3 )
 ## ---- fig.height = 6-----------------------------------------------------
 SimDataWavelet <- data.frame( t = 1:2000 )
 SimDataWavelet <- transform( SimDataWavelet,
+                             y = ifelse( t<=1000, sin( t*2 ), sin( t/10*2 ) ) +
+                               rnorm( length( t ), 0, 0.1 ) )
+xyplot( y ~ t, data = SimDataWavelet, type = "l" )
+
+## ------------------------------------------------------------------------
+xyplot( spec ~ freq, data = spectrum( SimDataWavelet$y, plot = FALSE ), type = "l",
+        scales = list( y = list( log = 10 ) ) )
+
+## ------------------------------------------------------------------------
+WaveletComp::wt.image( WaveletComp::analyze.wavelet( SimDataWavelet, "y",
+                                                     verbose = FALSE, make.pval = FALSE ) )
+
+## ---- fig.height = 6-----------------------------------------------------
+SimDataWavelet <- data.frame( t = 1:2000 )
+SimDataWavelet <- transform( SimDataWavelet,
                              y = WaveletComp::periodic.series( start.period = 20,
                                                                end.period = 200,
                                                   length = length( t ) ) +
@@ -148,12 +163,12 @@ rownames( CVDdaily ) <- NULL
 xyplot( cvd ~ date, data = CVDdaily, type = "l", xlab = "Time", ylab = "Number of deaths" )
 
 ## ------------------------------------------------------------------------
-CVDdaily$year <- year( CVDdaily$date )
+CVDdaily$year <- lubridate::year( CVDdaily$date )
 CVDdaily$wday <- as.factor( lubridate::wday( CVDdaily$date, week_start = 1 ) )
 CVDdaily$yday <- lubridate::yday( CVDdaily$date )/yearDays( CVDdaily$date )
 head( CVDdaily[ , c( "date", "year", "wday", "yday", "cvd" ) ] )
 
-## ------------------------------------------------------------------------
+## ---- message=FALSE------------------------------------------------------
 library( mgcv )
 fit <- gam( cvd ~ s( as.numeric( date ) ) + wday + s( yday, bs = "cc" ), data = CVDdaily,
             family = nb( link = log ) )
@@ -224,7 +239,10 @@ fit <- Gls( LeadLevel ~ Week.f*Trt, data = TLCData, corr = nlme::corSymm( form =
 fit
 
 ## ------------------------------------------------------------------------
-summary( fit )
+temp <- Predict( fit, Trt, Week.f )
+temp$Week.f <- as.numeric( levels( temp$Week.f ) )[ temp$Week.f ]
+xYplot( Cbind( yhat, lower, upper ) ~ Week.f, groups = Trt, data = temp, type = "b",
+        ylim = c( 10, 30 ) )
 
 ## ------------------------------------------------------------------------
 data( "Orthodont", package = "nlme" )

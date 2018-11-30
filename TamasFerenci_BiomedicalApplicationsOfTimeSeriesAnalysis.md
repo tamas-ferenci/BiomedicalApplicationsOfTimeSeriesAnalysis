@@ -21,12 +21,7 @@ nocite: |
   @fitzmaurice2012, @hedeker2006, @diggle2002, @pinheiro2009, @hardin2003, @madsen2008, @hamilton1994, @shumway2017, @cameron2013
 ---
 
-```{r setup, include=FALSE}
-library( lattice )
-library( data.table )
-library( rms )
-knitr::opts_chunk$set( cache = TRUE )
-```
+
 
 \tableofcontents[subsubsectionstyle=hide/hide/hide]
 
@@ -73,17 +68,62 @@ As with any statistical model:
 
 The `ts` is the basic time series object, it can be multivariate, but it can only handle evenly spaced time series (see `zoo` for unevenly spaced time series for example):
 
-```{r}
+
+```r
 ts( rnorm( 20 ), frequency = 4, start = c( 2010, 2 ) )
+```
+
+```
+##            Qtr1       Qtr2       Qtr3       Qtr4
+## 2010            -0.7959257 -0.1512653 -0.3575611
+## 2011 -0.7956175 -0.1880978  0.2254061  0.8224560
+## 2012  1.3941882 -0.8977673  1.0242012  1.1818423
+## 2013 -2.1265545 -1.3074036 -0.9922208 -0.3795757
+## 2014 -0.1981558  0.9191271  0.5872626 -0.8322504
+## 2015  1.3388344
+```
+
+```r
 ts( rnorm( 30 ), frequency = 12, start = c( 2010, 2 ) )
+```
+
+```
+##              Jan         Feb         Mar         Apr         May
+## 2010             -1.34905845 -1.08165926 -0.26791001 -0.33187780
+## 2011 -0.98080258  1.06546991  1.72213959 -0.32019389 -0.09044677
+## 2012 -0.60040047  1.55106769  0.63542068  0.28087855  1.63617577
+##              Jun         Jul         Aug         Sep         Oct
+## 2010 -0.17594537 -0.78469569 -1.62952706  1.65900243 -0.29385689
+## 2011  1.37086585 -0.18889592 -1.00193031  1.84303233 -0.85811827
+## 2012 -0.28285983  0.93290711                                    
+##              Nov         Dec
+## 2010  0.48908285 -0.07639366
+## 2011 -0.89801476 -0.17180304
+## 2012
 ```
 
 ### Using time series objects in R
 
-```{r, fig.height=5}
+
+```r
 ldeaths
+```
+
+```
+##       Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
+## 1974 3035 2552 2704 2554 2014 1655 1721 1524 1596 2074 2199 2512
+## 1975 2933 2889 2938 2497 1870 1726 1607 1545 1396 1787 2076 2837
+## 1976 2787 3891 3179 2011 1636 1580 1489 1300 1356 1653 2013 2823
+## 1977 3102 2294 2385 2444 1748 1554 1498 1361 1346 1564 1640 2293
+## 1978 2815 3137 2679 1969 1870 1633 1529 1366 1357 1570 1535 2491
+## 1979 3084 2605 2573 2143 1693 1504 1461 1354 1333 1492 1781 1915
+```
+
+```r
 plot( ldeaths )
 ```
+
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-2-1.png)
 
 # Spectral analysis (analysis in the frequency domain)
 
@@ -99,25 +139,32 @@ plot( ldeaths )
 ### Why is is it useful?
 
 It gives a picture of what frequencies ''create'' the signal:
-```{r, fig.height = 5.5}
+
+```r
 SimDataFourier <- data.frame( t = 1:1000 )
 SimDataFourier <- transform( SimDataFourier, y = 0.5*sin( t*2 ) + sin( t/10*2 ) +
                                rnorm( length( t ), 0, 0.1 ) )
 xyplot( y ~ t, data = SimDataFourier, type = "l", xlim = c( 0, 200 ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-3-1.png)
+
 ### Why is is it useful?
 
 It gives a picture of what frequencies ''create'' the signal:
-```{r}
+
+```r
 xyplot( spec ~ freq, data = spectrum( SimDataFourier$y, plot = FALSE ), type = "l",
         scales = list( y = list( log = 10 ) ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-4-1.png)
+
 ### Why is is it useful?
 
 (Sidenote) Custom plotting:
-```{r}
+
+```r
 locmaxpanel <- function( x, y, width, maxmeddiff = 1, rounddigit = 2, ... ) {
   if( width%%2==0 )
     width <- width+1
@@ -133,14 +180,18 @@ locmaxpanel <- function( x, y, width, maxmeddiff = 1, rounddigit = 2, ... ) {
 
 ### Why is is it useful?
 
-```{r}
+
+```r
 xyplot( spec ~ freq, data = spectrum( SimDataFourier$y, plot = FALSE ), type = "l",
         scales = list( y = list( log = 10 ) ), panel = locmaxpanel, width = 21, maxmeddiff = 2 )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-6-1.png)
+
 ### Case study: ECG analysis
 
-```{r,message=FALSE,warning=FALSE,fig.height=5.5}
+
+```r
 ## require( tuneR ) ## require( pastecs ) ## devtools::install_github( "mkfs/r-physionet-ptb" )
 ## https://www.physionet.org/physiobank/database/ptbdb/
 ## system2( system.file( "exec", "download_ptb.sh", package = "r.physionet.ptb" ) )
@@ -152,13 +203,18 @@ ptbecg <- r.physionet.ptb::ptb.extract.lead( ptb, "i" )$`1-10010`
 xyplot( ptbecg~seq_along( ptbecg ), type = "l", xlim = c( 0, 5000 ), xlab = "Time", ylab = "" )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-7-1.png)
+
 ### Case study: ECG analysis
 
-```{r, message=FALSE,warning=FALSE}
+
+```r
 xyplot( spec ~ freq, data = spectrum( ptbecg, plot = FALSE, span = rep( 201, 3 ) ), type = "l",
         scales = list( y = list( log = 10 ) ), panel = locmaxpanel, width = 21,
         maxmeddiff = 2e-4 )
 ```
+
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-8-1.png)
 
 ## Wavelet analysis
 
@@ -172,7 +228,8 @@ xyplot( spec ~ freq, data = spectrum( ptbecg, plot = FALSE, span = rep( 201, 3 )
 
 ### Problems of spectral analysis (and possible solutions)
 
-```{r, fig.height = 6}
+
+```r
 SimDataWavelet <- data.frame( t = 1:2000 )
 SimDataWavelet <- transform( SimDataWavelet,
                              y = ifelse( t<=1000, sin( t*2 ), sin( t/10*2 ) ) +
@@ -180,23 +237,32 @@ SimDataWavelet <- transform( SimDataWavelet,
 xyplot( y ~ t, data = SimDataWavelet, type = "l" )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-9-1.png)
+
 ### Problems of spectral analysis (and possible solutions)
 
-```{r}
+
+```r
 xyplot( spec ~ freq, data = spectrum( SimDataWavelet$y, plot = FALSE ), type = "l",
         scales = list( y = list( log = 10 ) ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-10-1.png)
+
 ### Result of wavelet transform
 
-```{r}
+
+```r
 WaveletComp::wt.image( WaveletComp::analyze.wavelet( SimDataWavelet, "y",
                                                      verbose = FALSE, make.pval = FALSE ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-11-1.png)
+
 ### Problems of spectral analysis (and possible solutions)
 
-```{r, fig.height = 6}
+
+```r
 SimDataWavelet <- data.frame( t = 1:2000 )
 SimDataWavelet <- transform( SimDataWavelet,
                              y = WaveletComp::periodic.series( start.period = 20,
@@ -206,24 +272,33 @@ SimDataWavelet <- transform( SimDataWavelet,
 xyplot( y ~ t, data = SimDataWavelet, type = "l" )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-12-1.png)
+
 ### Problems of spectral analysis (and possible solutions)
 
-```{r}
+
+```r
 xyplot( spec ~ freq, data = spectrum( SimDataWavelet$y, plot = FALSE ), type = "l",
         scales = list( y = list( log = 10 ) ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-13-1.png)
+
 ### Result of wavelet transform
 
-```{r}
+
+```r
 WaveletComp::wt.image( WaveletComp::analyze.wavelet( SimDataWavelet, "y",
                                                      verbose = FALSE, make.pval = FALSE ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-14-1.png)
+
 ### Case study for wavelet analysis: pertussis incidence
 
 (Sidenote) A bit of data scraping:
-```{r}
+
+```r
 tmpfile <- tempfile( fileext = ".xlsx" )
 download.file( url = paste0( "https://www.gov.uk/government/uploads/system/uploads/",
                              "attachment_data/file/339410/NoidsHistoricAnnualTotals.xlsx" ),
@@ -248,7 +323,8 @@ unlink( tmpfile )
 ### Case study for wavelet analysis: pertussis incidence
 
 (Sidenote) A bit of data scraping:
-```{r}
+
+```r
 tmpfile <- tempfile( fileext = ".xlsx" )
 download.file( url = paste0( "https://www.gov.uk/government/uploads/system/uploads/",
                              "attachment_data/file/664864/",
@@ -270,7 +346,8 @@ unlink( tmpfile )
 ### Case study for wavelet analysis: pertussis incidence
 
 (Sidenote) A bit of data scraping:
-```{r}
+
+```r
 tmpfile <- tempfile( fileext = ".xls" )
 download.file( url = paste0( "https://www.ons.gov.uk/file?uri=/",
                              "peoplepopulationandcommunity/populationandmigration/",
@@ -297,16 +374,22 @@ UKPertussis <- UKPertussis[ !is.na( UKPertussis$`Whooping cough` ), ]
 
 ### Case study for wavelet analysis: pertussis incidence
 
-```{r}
+
+```r
 xyplot( Inc ~ Year, data = UKPertussis, type = "l", ylab = "Incidence [/100 000/year]" )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-18-1.png)
+
 ### Case study for wavelet analysis: pertussis incidence
 
-```{r}
+
+```r
 WaveletComp::wt.image( WaveletComp::analyze.wavelet( UKPertussis, "Inc",
                                                      verbose = FALSE, make.pval = FALSE ) )
 ```
+
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-19-1.png)
 
 # Time series regression
 
@@ -329,56 +412,114 @@ WaveletComp::wt.image( WaveletComp::analyze.wavelet( UKPertussis, "Inc",
 
 ### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
 
-```{r, fig.height = 6}
+
+```r
 data( "CVDdaily", package = "season" )
 rownames( CVDdaily ) <- NULL
 xyplot( cvd ~ date, data = CVDdaily, type = "l", xlab = "Time", ylab = "Number of deaths" )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-20-1.png)
+
 ### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
 
-```{r}
+
+```r
 CVDdaily$year <- lubridate::year( CVDdaily$date )
 CVDdaily$wday <- as.factor( lubridate::wday( CVDdaily$date, week_start = 1 ) )
 CVDdaily$yday <- lubridate::yday( CVDdaily$date )/yearDays( CVDdaily$date )
 head( CVDdaily[ , c( "date", "year", "wday", "yday", "cvd" ) ] )
 ```
 
+<div class="kable-table">
+
+date          year  wday         yday   cvd
+-----------  -----  -----  ----------  ----
+1987-01-01    1987  4       0.0027397    55
+1987-01-02    1987  5       0.0054795    73
+1987-01-03    1987  6       0.0082192    64
+1987-01-04    1987  7       0.0109589    57
+1987-01-05    1987  1       0.0136986    56
+1987-01-06    1987  2       0.0164384    65
+
+</div>
+
 ### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
 
-```{r, message=FALSE}
+
+```r
 library( mgcv )
 fit <- gam( cvd ~ s( as.numeric( date ) ) + wday + s( yday, bs = "cc" ), data = CVDdaily,
             family = nb( link = log ) )
 summary( fit )
 ```
 
+```
+## 
+## Family: Negative Binomial(177.091) 
+## Link function: log 
+## 
+## Formula:
+## cvd ~ s(as.numeric(date)) + wday + s(yday, bs = "cc")
+## 
+## Parametric coefficients:
+##              Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)  3.820888   0.006137 622.550  < 2e-16 ***
+## wday2       -0.007799   0.008687  -0.898 0.369335    
+## wday3       -0.028719   0.008724  -3.292 0.000995 ***
+## wday4       -0.025035   0.008714  -2.873 0.004065 ** 
+## wday5       -0.015468   0.008697  -1.778 0.075323 .  
+## wday6       -0.022458   0.008709  -2.579 0.009920 ** 
+## wday7       -0.038679   0.008738  -4.427 9.57e-06 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Approximate significance of smooth terms:
+##                       edf Ref.df Chi.sq p-value    
+## s(as.numeric(date)) 7.696  8.568  254.4  <2e-16 ***
+## s(yday)             7.771  8.000 2732.5  <2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## R-sq.(adj) =  0.377   Deviance explained = 37.6%
+## -REML =  17546  Scale est. = 1         n = 5114
+```
+
 ### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
 
-```{r, fig.height = 6}
+
+```r
 plot( fit, select = 1, scale = 0, rug = FALSE, trans = exp, shade = TRUE,
       col = trellis.par.get()$superpose.line$col[1], xaxt = "n", xlab = "Year", ylab = "IRR" )
 axis( 1, at = seq( CVDdaily$date[1], tail( CVDdaily$date, 1 )+1, by = "year" ),
       labels = year( CVDdaily$date[1] ):year( tail( CVDdaily$date, 1 )+1 ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-23-1.png)
+
 ### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
 
-```{r, fig.height = 6}
+
+```r
 plot( fit, select = 2, scale = 0, rug = FALSE, trans = exp, shade = TRUE,
       col = trellis.par.get()$superpose.line$col[1], xaxt = "n", xlab = "Day of year",
       ylab = "IRR" )
 axis( 1, at = seq( 0, 1, 1/12 ), labels = seq( 0, 1, 1/12 )*30*12 )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-24-1.png)
+
 ### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
 
-```{r, fig.height = 6}
+
+```r
 source( "https://pastebin.com/raw/hBmStX4Y" )
 termplot2( fit, terms = "wday", se = TRUE, yscale = "exponential",
            col.term = trellis.par.get()$superpose.line$col[1],
            col.se = "gray80", se.type = "polygon", xlab = "Day of week" )
 ```
+
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-25-1.png)
 
 ## Filtering and smoothing
 
@@ -397,7 +538,8 @@ termplot2( fit, terms = "wday", se = TRUE, yscale = "exponential",
 
 Its operation can actually be best understood in frequency domain: it filters out high-frequency components (and retains low-frequency):
 
-```{r, fig.height = 4}
+
+```r
 do.call( gridExtra::grid.arrange, lapply( c( 2, 6, 12, 24 ), function( o ) {
   xyplot( y ~ t, groups = grp, data = rbind( data.frame( grp = "data", SimDataFourier ),
                                              data.frame( grp = "smooth", t = SimDataFourier$t,
@@ -407,23 +549,34 @@ do.call( gridExtra::grid.arrange, lapply( c( 2, 6, 12, 24 ), function( o ) {
 } ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-26-1.png)
+
 ### Case study: lung deaths in the UK, 1974-1979 -- moving average
 
-```{r}
+
+```r
 plot( decompose( ldeaths ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-27-1.png)
+
 ### Case study: lung deaths in the UK, 1974-1979 -- LOESS
 
-```{r}
+
+```r
 plot( stl( ldeaths, s.window = "periodic" ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-28-1.png)
+
 ### Case study: lung deaths in the UK, 1974-1979 -- seasonal adjustment
 
-```{r}
+
+```r
 plot( forecast::seasadj( stl( ldeaths, s.window = "periodic" ) ) )
 ```
+
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-29-1.png)
 
 # Analysis of longitudinal data
 
@@ -454,7 +607,8 @@ plot( forecast::seasadj( stl( ldeaths, s.window = "periodic" ) ) )
 
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r, fig.height = 5.5}
+
+```r
 TLCData <- read.table( "https://content.sph.harvard.edu/fitzmaur/ala2e/tlc-data.txt",
                        col.names = c( "ID", "Trt", paste0( "Wk", c( 0, 1, 4, 6 ) ) ) )
 TLCData <- reshape( TLCData, varying = paste0( "Wk", c( 0, 1, 4, 6 ) ), v.names = "LeadLevel",
@@ -464,9 +618,12 @@ TLCData$Week.f <- as.factor( TLCData$Week )
 xyplot( LeadLevel ~ Week | Trt, groups = ID, data = TLCData, type = "b" )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-30-1.png)
+
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r, fig.height = 5.5}
+
+```r
 TLCData <- data.table( TLCData )
 TLCData$Time <- as.numeric( TLCData$Week.f )
 dd <- datadist( TLCData )
@@ -478,28 +635,103 @@ xYplot( Cbind( mean, lwr, upr ) ~ Week, groups = Trt, type = "b",
         ylim = c( 10, 30 ), ylab = "Mean lead level" )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-31-1.png)
+
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r}
+
+```r
 ols( LeadLevel ~ Week.f*Trt, data = TLCData )
+```
+
+```
+## Linear Regression Model
+##  
+##  ols(formula = LeadLevel ~ Week.f * Trt, data = TLCData)
+##  
+##                 Model Likelihood     Discrimination    
+##                    Ratio Test           Indexes        
+##  Obs     400    LR chi2    159.22    R2       0.328    
+##  sigma6.6257    d.f.            7    R2 adj   0.316    
+##  d.f.    392    Pr(> chi2) 0.0000    g        4.920    
+##  
+##  Residuals
+##  
+##      Min      1Q  Median      3Q     Max 
+##  -16.662  -4.620  -0.993   3.673  43.138 
+##  
+##  
+##                   Coef     S.E.   t     Pr(>|t|)
+##  Intercept         26.2720 0.9370 28.04 <0.0001 
+##  Week.f=1          -1.6120 1.3251 -1.22 0.2245  
+##  Week.f=4          -2.2020 1.3251 -1.66 0.0974  
+##  Week.f=6          -2.6260 1.3251 -1.98 0.0482  
+##  Trt=A              0.2680 1.3251  0.20 0.8398  
+##  Week.f=1 * Trt=A -11.4060 1.8740 -6.09 <0.0001 
+##  Week.f=4 * Trt=A  -8.8240 1.8740 -4.71 <0.0001 
+##  Week.f=6 * Trt=A  -3.1520 1.8740 -1.68 0.0934  
+## 
 ```
 
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r}
+
+```r
 fit <- Gls( LeadLevel ~ Week.f*Trt, data = TLCData, corr = nlme::corSymm( form = ~ Time | ID ),
      weights = nlme::varIdent( form = ~ 1 | Week.f ) )
 fit
 ```
 
+```
+## Generalized Least Squares Fit by REML
+##  
+##  Gls(model = LeadLevel ~ Week.f * Trt, data = TLCData, correlation = nlme::corSymm(form = ~Time | 
+##      ID), weights = nlme::varIdent(form = ~1 | Week.f))
+##  
+##                                                      
+##  Obs 400        Log-restricted-likelihood-1208.04    
+##  Clusters100    Model d.f.  7                        
+##  g 4.920        sigma  5.0225                        
+##                 d.f.      392                        
+##  
+##                   Coef     S.E.   t      Pr(>|t|)
+##  Intercept         26.2720 0.7103  36.99 <0.0001 
+##  Week.f=1          -1.6120 0.7919  -2.04 0.0425  
+##  Week.f=4          -2.2020 0.8149  -2.70 0.0072  
+##  Week.f=6          -2.6260 0.8885  -2.96 0.0033  
+##  Trt=A              0.2680 1.0045   0.27 0.7898  
+##  Week.f=1 * Trt=A -11.4060 1.1199 -10.18 <0.0001 
+##  Week.f=4 * Trt=A  -8.8240 1.1525  -7.66 <0.0001 
+##  Week.f=6 * Trt=A  -3.1520 1.2566  -2.51 0.0125  
+##  
+##  Correlation Structure: General
+##   Formula: ~Time | ID 
+##   Parameter estimate(s):
+##   Correlation: 
+##    1     2     3    
+##  2 0.571            
+##  3 0.570 0.775      
+##  4 0.577 0.582 0.581
+##  Variance function:
+##   Structure: Different standard deviations per stratum
+##   Formula: ~1 | Week.f 
+##   Parameter estimates:
+##         0        1        4        6 
+##  1.000000 1.325884 1.370443 1.524804 
+## 
+```
+
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r}
+
+```r
 temp <- Predict( fit, Trt, Week.f )
 temp$Week.f <- as.numeric( levels( temp$Week.f ) )[ temp$Week.f ]
 xYplot( Cbind( yhat, lower, upper ) ~ Week.f, groups = Trt, data = temp, type = "b",
         ylim = c( 10, 30 ) )
 ```
+
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-34-1.png)
 
 ## Mixed effects models
 
@@ -514,22 +746,29 @@ xYplot( Cbind( yhat, lower, upper ) ~ Week.f, groups = Trt, data = temp, type = 
 
 ### Case study: human skull growth
 
-```{r}
+
+```r
 data( "Orthodont", package = "nlme" )
 OrthoFem <- Orthodont[ Orthodont$Sex=="Female", ]
 plot( OrthoFem )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-35-1.png)
+
 ### Case study: human skull growth
 
-```{r}
+
+```r
 fit1 <- nlme::lmList( distance ~ I( age - 11 ), data = OrthoFem )
 plot( nlme::intervals( fit1 ) )
 ```
 
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-36-1.png)
+
 ### Case study: human skull growth
 
-```{r, fig.height = 5.5}
+
+```r
 fit2 <- nlme::lme( distance ~ age, data = OrthoFem, random = ~1|Subject )
 xyplot( distance + fitted( fit1 ) + fitted( fit2, level = 1 ) +
           fitted( fit2, level = 0 ) ~ age | Subject, data = OrthoFem,
@@ -538,6 +777,8 @@ xyplot( distance + fitted( fit1 ) + fitted( fit2, level = 1 ) +
                                    "Fitted (mixed effects)", "Fitted (fixed effects only)" ),
                          columns = 4, points = FALSE, lines = TRUE ) )
 ```
+
+![](TamasFerenci_BiomedicalApplicationsOfTimeSeriesAnalysis_files/figure-slidy/unnamed-chunk-37-1.png)
 
 # Concluding remarks
 
