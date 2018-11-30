@@ -23,9 +23,9 @@ nocite: |
 
 ```{r setup, include=FALSE}
 library( lattice )
-library( gridExtra )
 library( data.table )
 library( rms )
+knitr::opts_chunk$set( cache = TRUE )
 ```
 
 \tableofcontents[subsubsectionstyle=hide/hide/hide]
@@ -61,6 +61,29 @@ library( rms )
     - Analysis of data that are only meaningful when collected over time: typically biomedical signals such as ECG or EEG
     - Analysis of data that are meaningful cross-sectionally, but measurements are repeated to obtain information on the time dimension too: typical in longitudinal studies, analysis of growth curves
     - Analysis of epidemiologic data with time dimension: typically incidence of diseases
+    
+### Aims of time series analysis
+
+As with any statistical model:
+
+- Understanding phenomena (analysis, interpretation of the model, answering medical questions based on the results)
+- Forecasting
+
+### Time series in R
+
+The `ts` is the basic time series object, it can be multivariate, but it can only handle evenly spaced time series (see `zoo` for unevenly spaced time series for example):
+
+```{r}
+ts( rnorm( 20 ), frequency = 4, start = c( 2010, 2 ) )
+ts( rnorm( 30 ), frequency = 12, start = c( 2010, 2 ) )
+```
+
+### Using time series objects in R
+
+```{r, fig.height=5}
+ldeaths
+plot( ldeaths )
+```
 
 # Spectral analysis (analysis in the frequency domain)
 
@@ -69,8 +92,8 @@ library( rms )
 ### Fourier analysis
 
 - Fundamental idea: every periodic function can be represented as a weighted sum of sinusoidals (sine waves)
-- We may need infinite number of sinusoidals, but still countable many (of course, we are trying to reconstruct a continuous function -- the reason why we can do this, is its periodicity)
-- If the function is non-periodic, it still works (quite universally), but we will need infinitely many terms
+- We may need infinite number of sinusoidals, but still countable many, the frequency of which are all multiples of a fundamental frequency
+- If the function is non-periodic, it still works (quite universally), but we will need uncountably many terms
 
 ### An example of Fourier analysis
 
@@ -79,7 +102,7 @@ library( rms )
 ### Why is is it useful?
 
 It gives a picture of what frequencies ''create'' the signal:
-```{r fourierexample1,fig.height=5.5}
+```{r, fig.height = 5.5}
 SimDataFourier <- data.frame( t = 1:1000 )
 SimDataFourier <- transform( SimDataFourier, y = 0.5*sin( t*2 ) + sin( t/10*2 ) +
                                rnorm( length( t ), 0, 0.1 ) )
@@ -89,7 +112,7 @@ xyplot( y ~ t, data = SimDataFourier, type = "l", xlim = c( 0, 200 ) )
 ### Why is is it useful?
 
 It gives a picture of what frequencies ''create'' the signal:
-```{r fourierexample2}
+```{r}
 xyplot( spec ~ freq, data = spectrum( SimDataFourier$y, plot = FALSE ), type = "l",
         scales = list( y = list( log = 10 ) ) )
 ```
@@ -97,7 +120,7 @@ xyplot( spec ~ freq, data = spectrum( SimDataFourier$y, plot = FALSE ), type = "
 ### Why is is it useful?
 
 (Sidenote) Custom plotting:
-```{r fourierexample3}
+```{r}
 locmaxpanel <- function( x, y, width, maxmeddiff = 1, rounddigit = 2, ... ) {
   if( width%%2==0 )
     width <- width+1
@@ -113,29 +136,28 @@ locmaxpanel <- function( x, y, width, maxmeddiff = 1, rounddigit = 2, ... ) {
 
 ### Why is is it useful?
 
-```{r fourierexample4}
+```{r}
 xyplot( spec ~ freq, data = spectrum( SimDataFourier$y, plot = FALSE ), type = "l",
         scales = list( y = list( log = 10 ) ), panel = locmaxpanel, width = 21, maxmeddiff = 2 )
 ```
 
 ### Case study: ECG analysis
 
-```{r ecgexample1,message=FALSE,warning=FALSE,fig.height=5.5}
+```{r,message=FALSE,warning=FALSE,fig.height=5.5}
 ## require( tuneR ) ## require( pastecs ) ## devtools::install_github( "mkfs/r-physionet-ptb" )
 ## https://www.physionet.org/physiobank/database/ptbdb/
-library( r.physionet.ptb )
 ## system2( system.file( "exec", "download_ptb.sh", package = "r.physionet.ptb" ) )
 ## system2( system.file( "exec", "ptb_patient_to_json.rb", package = "r.physionet.ptb" ),
 ## args="patient001" )
-
-ptb <- ptb.from.file( "patient001.json" )
-ptbecg <- ptb.extract.lead( ptb, "i" )$`1-10010`
+library( r.physionet.ptb )
+ptb <- r.physionet.ptb::ptb.from.file( "patient001.json" )
+ptbecg <- r.physionet.ptb::ptb.extract.lead( ptb, "i" )$`1-10010`
 xyplot( ptbecg~seq_along( ptbecg ), type = "l", xlim = c( 0, 5000 ), xlab = "Time", ylab = "" )
 ```
 
 ### Case study: ECG analysis
 
-```{r ecgexample2,message=FALSE,warning=FALSE}
+```{r, message=FALSE,warning=FALSE}
 xyplot( spec ~ freq, data = spectrum( ptbecg, plot = FALSE, span = rep( 201, 3 ) ), type = "l",
         scales = list( y = list( log = 10 ) ), panel = locmaxpanel, width = 21,
         maxmeddiff = 2e-4 )
@@ -153,12 +175,11 @@ xyplot( spec ~ freq, data = spectrum( ptbecg, plot = FALSE, span = rep( 201, 3 )
 
 ### Problems of spectral analysis (and possible solutions)
 
-```{r waveletexample1,fig.height=6,warning=FALSE,message=FALSE}
-library( WaveletComp )
-
+```{r, fig.height = 6}
 SimDataWavelet <- data.frame( t = 1:2000 )
 SimDataWavelet <- transform( SimDataWavelet,
-                             y = periodic.series( start.period = 20, end.period = 200,
+                             y = WaveletComp::periodic.series( start.period = 20,
+                                                               end.period = 200,
                                                   length = length( t ) ) +
                                0.1*rnorm( length( t ) ) )
 xyplot( y ~ t, data = SimDataWavelet, type = "l" )
@@ -166,32 +187,30 @@ xyplot( y ~ t, data = SimDataWavelet, type = "l" )
 
 ### Problems of spectral analysis (and possible solutions)
 
-```{r waveletexample2}
+```{r}
 xyplot( spec ~ freq, data = spectrum( SimDataWavelet$y, plot = FALSE ), type = "l",
         scales = list( y = list( log = 10 ) ) )
 ```
 
 ### Result of wavelet transform
 
-```{r waveletexample3}
-wt.image( analyze.wavelet( SimDataWavelet, "y", verbose = FALSE, make.pval = FALSE ) )
+```{r}
+WaveletComp::wt.image( WaveletComp::analyze.wavelet( SimDataWavelet, "y",
+                                                     verbose = FALSE, make.pval = FALSE ) )
 ```
 
 ### Case study for wavelet analysis: pertussis incidence
 
 (Sidenote) A bit of data scraping:
-```{r pertussiswavelet1,warning=FALSE,message=FALSE}
-library( XLConnect )
-library( plyr )
-
+```{r}
 tmpfile <- tempfile( fileext = ".xlsx" )
 download.file( url = paste0( "https://www.gov.uk/government/uploads/system/uploads/",
                              "attachment_data/file/339410/NoidsHistoricAnnualTotals.xlsx" ),
                destfile = tmpfile, mode = "wb" )
-res1 <- loadWorkbook( tmpfile )
-setMissingValue( res1, value = c( "*" ) )
-res1 <- do.call( rbind.fill, lapply( getSheets( res1 ), function( s ) {
-  temp <- readWorksheet( res1, sheet = s, startRow = 4 )
+res1 <- XLConnect::loadWorkbook( tmpfile )
+XLConnect::setMissingValue( res1, value = c( "*" ) )
+res1 <- do.call( plyr::rbind.fill, lapply( XLConnect::getSheets( res1 ), function( s ) {
+  temp <- XLConnect::readWorksheet( res1, sheet = s, startRow = 4 )
   temp <- temp[ , grep( "Disease", colnames( temp ) ):ncol( temp ) ]
   temp <- temp[ 1:( if( sum( is.na( temp$Disease ) )==0 ) nrow( temp ) else
     which( is.na( temp$Disease ) )[ 1 ]-1 ), ]
@@ -208,16 +227,16 @@ unlink( tmpfile )
 ### Case study for wavelet analysis: pertussis incidence
 
 (Sidenote) A bit of data scraping:
-```{r pertussiswavelet2}
+```{r}
 tmpfile <- tempfile( fileext = ".xlsx" )
 download.file( url = paste0( "https://www.gov.uk/government/uploads/system/uploads/",
                              "attachment_data/file/664864/",
                              "Annual_totals_from_1982_to_2016.xlsx" ),
                destfile = tmpfile, mode = "wb" )
-res2 <- loadWorkbook( tmpfile )
-setMissingValue( res2, value = c( "--" ) )
-res2 <- do.call( rbind.fill, lapply( getSheets( res2 )[ -1 ], function( s ) {
-  temp <- readWorksheet( res2, sheet = s, startRow = 5 )
+res2 <- XLConnect::loadWorkbook( tmpfile )
+XLConnect::setMissingValue( res2, value = c( "--" ) )
+res2 <- do.call( plyr::rbind.fill, lapply( XLConnect::getSheets( res2 )[ -1 ], function( s ) {
+  temp <- XLConnect::readWorksheet( res2, sheet = s, startRow = 5 )
   temp <- temp[ 1:( nrow( temp )-1 ), ]
   temp2 <- as.data.frame( t( temp[ , - 1 ] ) )
   colnames( temp2 ) <- temp[ , 1 ]
@@ -230,7 +249,7 @@ unlink( tmpfile )
 ### Case study for wavelet analysis: pertussis incidence
 
 (Sidenote) A bit of data scraping:
-```{r pertussiswavelet3}
+```{r}
 tmpfile <- tempfile( fileext = ".xls" )
 download.file( url = paste0( "https://www.ons.gov.uk/file?uri=/",
                              "peoplepopulationandcommunity/populationandmigration/",
@@ -238,7 +257,7 @@ download.file( url = paste0( "https://www.ons.gov.uk/file?uri=/",
                              "004358englandandwalespopulationestimates1838to2014/",
                              "englandandwalespopulationestimates18382014tcm77409914.xls" ),
                destfile = tmpfile, mode = "wb" )
-res3 <- readWorksheetFromFile( tmpfile, sheet = "EW Total Pop 1838-2014", startRow = 2,
+res3 <- XLConnect::readWorksheetFromFile( tmpfile, sheet = "EW Total Pop 1838-2014", startRow = 2,
                                endRow = 179 )
 unlink( tmpfile )
 names( res3 )[ 1 ] <- "Year"
@@ -249,7 +268,7 @@ res4 <- read.csv( paste0( "https://www.ons.gov.uk/generator?format=csv&uri=/",
                           "populationestimates/timeseries/ewpop/pop" ), skip = 7 )
 names( res4 ) <- c( "Year", "Persons" )
 res4 <- res4[ res4$Year>=2015, ]
-UKEpid <- merge( rbind.fill( res1, res2 ), rbind( res3, res4 ) )
+UKEpid <- merge( plyr::rbind.fill( res1, res2 ), rbind( res3, res4 ) )
 UKPertussis <- UKEpid[ , c( "Year", "Whooping cough", "Persons" ) ]
 UKPertussis$Inc <- UKPertussis$`Whooping cough`/UKPertussis$Persons*100000
 UKPertussis <- UKPertussis[ !is.na( UKPertussis$`Whooping cough` ), ]
@@ -257,55 +276,135 @@ UKPertussis <- UKPertussis[ !is.na( UKPertussis$`Whooping cough` ), ]
 
 ### Case study for wavelet analysis: pertussis incidence
 
-```{r pertussiswavelet4}
+```{r}
 xyplot( Inc ~ Year, data = UKPertussis, type = "l", ylab = "Incidence [/100 000/year]" )
 ```
 
 ### Case study for wavelet analysis: pertussis incidence
 
-```{r pertussiswavelet5}
-wt.image( analyze.wavelet( UKPertussis, "Inc", verbose = FALSE, make.pval = FALSE ) )
+```{r}
+WaveletComp::wt.image( WaveletComp::analyze.wavelet( UKPertussis, "Inc",
+                                                     verbose = FALSE, make.pval = FALSE ) )
+```
+
+# Time series regression
+
+## Regression models for time series
+
+### Regression models
+
+- Regression is perhaps \emph{the} most powerful tool for the analysis of time series in the time domain
+- With appropriate measures taken to account for the nature of the data
+- This of course gives rise to all usual issues of regression models (model specification such as the question of non-linearities, model diagnostics etc.)
+- Mostly models with exogeneous regressors are used, stochastic models are employed much less often
+
+### Applications in epidemiology
+
+- Count data are typical, giving rise to Generalized Linear Models
+- Further complications within GLMs, such as overdispersion
+- Need to take changing age- and sex composition into account
+- Traditionally: standardization, but in the modern approach they're just confounders!
+- Models can include many levels in time
+
+### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+
+```{r, fig.height = 6}
+data( "CVDdaily", package = "season" )
+rownames( CVDdaily ) <- NULL
+xyplot( cvd ~ date, data = CVDdaily, type = "l", xlab = "Time", ylab = "Number of deaths" )
+```
+
+### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+
+```{r}
+CVDdaily$year <- year( CVDdaily$date )
+CVDdaily$wday <- as.factor( lubridate::wday( CVDdaily$date, week_start = 1 ) )
+CVDdaily$yday <- lubridate::yday( CVDdaily$date )/yearDays( CVDdaily$date )
+head( CVDdaily[ , c( "date", "year", "wday", "yday", "cvd" ) ] )
+```
+
+### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+
+```{r}
+library( mgcv )
+fit <- gam( cvd ~ s( as.numeric( date ) ) + wday + s( yday, bs = "cc" ), data = CVDdaily,
+            family = nb( link = log ) )
+summary( fit )
+```
+
+### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+
+```{r, fig.height = 6}
+plot( fit, select = 1, scale = 0, rug = FALSE, trans = exp, shade = TRUE,
+      col = trellis.par.get()$superpose.line$col[1], xaxt = "n", xlab = "Year", ylab = "IRR" )
+axis( 1, at = seq( CVDdaily$date[1], tail( CVDdaily$date, 1 )+1, by = "year" ),
+      labels = year( CVDdaily$date[1] ):year( tail( CVDdaily$date, 1 )+1 ) )
+```
+
+### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+
+```{r, fig.height = 6}
+plot( fit, select = 2, scale = 0, rug = FALSE, trans = exp, shade = TRUE,
+      col = trellis.par.get()$superpose.line$col[1], xaxt = "n", xlab = "Day of year",
+      ylab = "IRR" )
+axis( 1, at = seq( 0, 1, 1/12 ), labels = seq( 0, 1, 1/12 )*30*12 )
+```
+
+### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+
+```{r, fig.height = 6}
+source( "https://pastebin.com/raw/hBmStX4Y" )
+termplot2( fit, terms = "wday", se = TRUE, yscale = "exponential",
+           col.term = trellis.par.get()$superpose.line$col[1],
+           col.se = "gray80", se.type = "polygon", xlab = "Day of week" )
 ```
 
 ## Filtering and smoothing
 
-### Filtering (and its interpretation in the frequency domain)
+### Filtering
 
 - Filter: we create another time series from the investigated one
 - Consider the well-known moving average filter:
 \[
   y'\left(t\right)=\frac{y_t+y_{t-1}+y_{t-2}+\ldots+y_{t-\left(p-1\right)}}{p}
 \]
-- Traditionally used to ''filter noise''
-- But its operation can actually be best understood in frequency domain: it filters out high-frequency components (and retains low-frequency)!
+- Traditionally used to ''filter noise'' or to separate components of the time series (decompose the time series)
+- This can be achieved using deterministic time series regression (''model-based decomposition''), see the previous example
+- But filters like the above moving average allows us to decompose the time series without assuming a parametric model
 
-### Filtering (and its interpretation in the frequency domain)
+### Filtering
 
-```{r fitering1example1,fig.height=5.5}
-library( forecast )
+Its operation can actually be best understood in frequency domain: it filters out high-frequency components (and retains low-frequency):
 
-do.call( grid.arrange, lapply( c( 2, 6, 12, 24 ), function( o ) {
+```{r, fig.height = 4}
+do.call( gridExtra::grid.arrange, lapply( c( 2, 6, 12, 24 ), function( o ) {
   xyplot( y ~ t, groups = grp, data = rbind( data.frame( grp = "data", SimDataFourier ),
                                              data.frame( grp = "smooth", t = SimDataFourier$t,
-                                                         y = ma( SimDataFourier$y, o ) ) ),
+                                                         y = forecast::ma( SimDataFourier$y,
+                                                                           o ) ) ),
           type = "l", xlim = c( 0, 200 ), main = paste0( "Order: ", o ) )
 } ) )
 ```
 
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+### Case study: lung deaths in the UK, 1974-1979 -- moving average
 
-```{r fitering1example2}
-data( "CVD", package = "season" )
-xyplot( cvd ~ yrmon, data = CVD, type = "l", xlab = "Time", ylab = "Number of deaths" )
+```{r}
+plot( decompose( ldeaths ) )
 ```
 
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000
+### Case study: lung deaths in the UK, 1974-1979 -- LOESS
 
-```{r fitering1example3}
-plot( decompose( ts( data = CVD$cvd, frequency = 12 ) ) )
+```{r}
+plot( stl( ldeaths, s.window = "periodic" ) )
 ```
 
-# Analysis of time series in the time domain
+### Case study: lung deaths in the UK, 1974-1979 -- seasonal adjustment
+
+```{r}
+plot( forecast::seasadj( stl( ldeaths, s.window = "periodic" ) ) )
+```
+
+# Analysis of longitudinal data
 
 ## General considerations
 
@@ -315,18 +414,18 @@ plot( decompose( ts( data = CVD$cvd, frequency = 12 ) ) )
 - Typical questions: effect of an intervention, or natural history (growth curve)
 - Usual tool: regression models, usual problem: intra-individual correlation (clustered data)
 - Mostly obsolote solutions: RM-ANOVA (has many assumptions that are hard to test, and are usually not met in practice), pairwise tests (multiple comparisons problem, no interpolation possible, etc.), summary statistics (data are reduced to a few parameters in the first step, dramatic loss of information among others)
-- Usual solutions:
-    - Cluster-robust standard errors or GLS (works only for continuous responses)
-    - Mixed effects models (can handle hiearchical models, parameters can be different for each subject)
-    - Generalized Estimating Equations (marginal model)
 
-## Analysis of longitudinal data: GLS 
+### Usual solutions
+
+- Cluster-robust standard errors or GLS (works only for continuous responses)
+- Mixed effects models (can handle hiearchical models, parameters can be different for each subject)
+- Generalized Estimating Equations (marginal model)
+
+## Generalized Least Squares
 
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r glsexample1,fig.height=5.5, message=FALSE}
-library( nlme )
-
+```{r, fig.height = 5.5}
 TLCData <- read.table( "https://content.sph.harvard.edu/fitzmaur/ala2e/tlc-data.txt",
                        col.names = c( "ID", "Trt", paste0( "Wk", c( 0, 1, 4, 6 ) ) ) )
 TLCData <- reshape( TLCData, varying = paste0( "Wk", c( 0, 1, 4, 6 ) ), v.names = "LeadLevel",
@@ -338,7 +437,7 @@ xyplot( LeadLevel ~ Week | Trt, groups = ID, data = TLCData, type = "b" )
 
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r glsexample2,fig.height=5.5}
+```{r, fig.height = 5.5}
 TLCData <- data.table( TLCData )
 TLCData$Time <- as.numeric( TLCData$Week.f )
 dd <- datadist( TLCData )
@@ -352,45 +451,45 @@ xYplot( Cbind( mean, lwr, upr ) ~ Week, groups = Trt, type = "b",
 
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r glsexample3}
+```{r}
 ols( LeadLevel ~ Week.f*Trt, data = TLCData )
 ```
 
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r glsexample4}
-fit <- Gls( LeadLevel ~ Week.f*Trt, data = TLCData, corr = corSymm( form = ~ Time | ID ),
-     weights = varIdent( form = ~ 1 | Week.f ) )
+```{r}
+fit <- Gls( LeadLevel ~ Week.f*Trt, data = TLCData, corr = nlme::corSymm( form = ~ Time | ID ),
+     weights = nlme::varIdent( form = ~ 1 | Week.f ) )
 fit
 ```
 
 ### Case study: Treatment of Lead Exposed Children Trial
 
-```{r glsexample5}
+```{r}
 summary( fit )
 ```
 
-## Analysis of longitudinal data: mixed effects models
+## Mixed effects models
 
 ### Case study: human skull growth
 
-```{r mixedexample1}
-data( "Orthodont" )
+```{r}
+data( "Orthodont", package = "nlme" )
 OrthoFem <- Orthodont[ Orthodont$Sex=="Female", ]
 plot( OrthoFem )
 ```
 
 ### Case study: human skull growth
 
-```{r mixedexample2}
-fit1 <- lmList( distance ~ I( age - 11 ), data = OrthoFem )
-plot( intervals( fit1 ) )
+```{r}
+fit1 <- nlme::lmList( distance ~ I( age - 11 ), data = OrthoFem )
+plot( nlme::intervals( fit1 ) )
 ```
 
 ### Case study: human skull growth
 
-```{r mixedexample3,fig.height=5.5}
-fit2 <- lme( distance ~ age, data = OrthoFem, random = ~1|Subject )
+```{r, fig.height = 5.5}
+fit2 <- nlme::lme( distance ~ age, data = OrthoFem, random = ~1|Subject )
 xyplot( distance + fitted( fit1 ) + fitted( fit2, level = 1 ) +
           fitted( fit2, level = 0 ) ~ age | Subject, data = OrthoFem,
         type = c( "p", "l", "l", "l" ), distribute.type = TRUE, ylab = "Distance", grid = TRUE,
@@ -399,82 +498,14 @@ xyplot( distance + fitted( fit1 ) + fitted( fit2, level = 1 ) +
                          columns = 4, points = FALSE, lines = TRUE ) )
 ```
 
-### Regression modelling in time series analysis
-
-- Perhaps \emph{the} most powerful tool
-- With appropriate measures taken to account for the nature of the data
-- This of course gives rise to all usual issues of regression models (model specification such as the question of non-linearities, model diagnostics etc.)
-- Mostly models with exogeneous regressors are used, stochastic models are employed much less often
-
-## Applications in epidemiology
-
-- Count data are typical, giving rise to Generalized Linear Models
-- Further complications within GLMs, such as overdispersion
-- Need to take changing age- and sex composition into account
-- Traditionally: standardization, but in the modern approach they're just confounders!
-- Models can include many levels in time
-
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000 revisited
-
-```{r counttsexample1, fig.height=6}
-data( "CVDdaily", package = "season" )
-rownames( CVDdaily ) <- NULL
-xyplot( cvd ~ date, data = CVDdaily, type = "l", xlab = "Time", ylab = "Number of deaths" )
-```
-
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000 revisited
-
-```{r counttsexample2, warning=FALSE, message=FALSE}
-library( lubridate )
-CVDdaily$year <- year( CVDdaily$date )
-CVDdaily$wday <- as.factor( wday( CVDdaily$date, week_start = 1 ) )
-CVDdaily$yday <- yday( CVDdaily$date )/yearDays( CVDdaily$date )
-head( CVDdaily[ , c( "date", "year", "wday", "yday", "cvd" ) ] )
-```
-
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000 revisited
-
-```{r counttsexample3, warning=FALSE, message=FALSE}
-library( mgcv )
-fit <- gam( cvd ~ s( as.numeric( date ) ) + wday + s( yday, bs = "cc" ), data = CVDdaily,
-            family = nb( link = log ) )
-summary( fit )
-```
-
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000 revisited
-
-```{r counttsexample4, warning=FALSE, message=FALSE,fig.height=6}
-plot( fit, select = 1, scale = 0, rug = FALSE, trans = exp, shade = TRUE,
-      col = trellis.par.get()$superpose.line$col[1], xaxt = "n", xlab = "Year", ylab = "IRR" )
-axis( 1, at = seq( CVDdaily$date[1], tail( CVDdaily$date, 1 )+1, by = "year" ),
-      labels = year( CVDdaily$date[1] ):year( tail( CVDdaily$date, 1 )+1 ) )
-```
-
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000 revisited
-
-```{r counttsexample5, warning=FALSE, message=FALSE,fig.height=6}
-plot( fit, select = 2, scale = 0, rug = FALSE, trans = exp, shade = TRUE,
-      col = trellis.par.get()$superpose.line$col[1], xaxt = "n", xlab = "Day of year",
-      ylab = "IRR" )
-axis( 1, at = seq( 0, 1, 1/12 ), labels = seq( 0, 1, 1/12 )*30*12 )
-```
-
-### Case study: CV mortality in elderly in Los Angeles from 1987 to 2000 revisited
-
-```{r counttsexample6, warning=FALSE, message=FALSE,fig.height=6}
-source( "https://pastebin.com/raw/hBmStX4Y" )
-termplot2( fit, terms = "wday", se = TRUE, yscale = "exponential",
-           col.term = trellis.par.get()$superpose.line$col[1],
-           col.se = "gray80", se.type = "polygon", xlab = "Day of week" )
-```
-
 # Concluding remarks
 
 ### A few words on what we did not cover
 
-- (Non-parametric) filtering and smoothing (LOESS, weighted moving average, Holt-Winters etc.)
+- (Non-parametric) filtering and smoothing (LOESS, weighted moving average, Holt-Winters, exponential smoothing etc.)
+- Tools of stochastic modelling (stationarity, autocorrelation function, ARIMA models etc.)
 - Multivariate time series (coherence, cross-correlation, VAR models etc.)
-- Tools of stochastic modelling (autocorrelation function, ARMA models etc.)
+- Questions of forecasting, quantifying forecast accuracy, comparing forecasts, validation
 - Long-range memory
 - State-space models
 - Regime switching models
